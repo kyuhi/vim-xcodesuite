@@ -7,6 +7,7 @@ let s:Process = s:V.import( 'Process' )
 func! xcodesuite#open()
     let projdir = s:get_projectdir_of_currentdir()
     if projdir == ''
+        call s:error_msg( ".xcodeproj directory does not exist." )
         return
     endif
     silent exe '!open ' . projdir
@@ -57,8 +58,9 @@ endfunc
 
 func! s:get_projectdir_of_currentdir()
     for dirname in s:upwrads_directories( expand( '%:p' ) )
-        if -1 != match( dirname, '.xcodeproj' )
-            return dirname
+        let proj = glob( s:Path.join( dirname, '/*.xcodeproj' ) )
+        if len(proj)
+            return proj
         endif
     endfor
     return ''
@@ -82,11 +84,10 @@ endfunc
 
 
 func! s:validate_sdk( sdk )
-    if 'iphoneos' == a:sdk || a:sdk == 'macos' || a:sdk == 'iphonesimulator'
+    if 'iphoneos' == a:sdk || a:sdk == 'macosx' || a:sdk == 'iphonesimulator'
         return 1
     endif
-    call Message.echomsg( ErrorMsg,
-                \ "expected iphoneos or macos or iphonesimulator" )
+    call s:error_msg( "expected iphoneos or macos or iphonesimulator" )
     return 0
 endfunc
 
@@ -97,3 +98,13 @@ func! s:xcrun_show( option, sdk )
         return s:Process.system( cmd )
     endif
 endfunc
+
+function! s:error_msg( fmt, ... )
+    let message = ''
+    if len(a:000)
+        let message = call( 'printf', [ a:fmt ] + a:000 )
+    else
+        let message = a:fmt
+    endif
+    call s:Message.echomsg( 'ErrorMsg', message )
+endfunction
